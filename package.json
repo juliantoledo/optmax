@@ -34,6 +34,15 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true
+    },
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "icon": "assets/icon.png",
+      "identity": null,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "OptMax ${version}"
     }
   }
 }
