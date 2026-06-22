@@ -44,7 +44,11 @@ Click **Analyze** on any row to open a modal with:
 
 ## Screenshots
 
-> Add screenshots here after first launch.
+![Dashboard](scripts/shots/02-dashboard-live.png)
+![Top 25 Opportunities](scripts/shots/03-top25.png)
+![Discover](scripts/shots/06-discover.png)
+![Analysis Modal](scripts/shots/05-modal.png)
+![Settings](scripts/shots/05-settings.png)
 
 ---
 
