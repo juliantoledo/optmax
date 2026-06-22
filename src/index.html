@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OptMax</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="window-drag-region">
+    <div class="window-controls">
+      <button class="wc-btn wc-minimize" id="wc-minimize" title="Minimize">&#x2013;</button>
+      <button class="wc-btn wc-maximize" id="wc-maximize" title="Maximize">&#x25A1;</button>
+      <button class="wc-btn wc-close"    id="wc-close"    title="Close">&#x2715;</button>
+    </div>
+  </div>
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <svg class="logo-svg" width="30" height="30" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="logo-g" x1="0" y1="100" x2="100" y2="0" gradientUnits="userSpaceOnUse">
+              <stop offset="0%"   stop-color="#38BDF8"/>
+              <stop offset="50%"  stop-color="#818CF8"/>
+              <stop offset="100%" stop-color="#C084FC"/>
+            </linearGradient>
+          </defs>
+          <rect x="3"  y="64" width="22" height="32" rx="5" fill="url(#logo-g)"/>
+          <rect x="36" y="42" width="22" height="54" rx="5" fill="url(#logo-g)"/>
+          <rect x="69" y="26" width="22" height="70" rx="5" fill="url(#logo-g)"/>
+          <line x1="14" y1="82" x2="87" y2="12" stroke="url(#logo-g)" stroke-width="11" stroke-linecap="round"/>
+          <polygon points="96,4 91,8 83,16" fill="url(#logo-g)"/>
+        </svg>
+        <span class="logo-text">Opt<span class="logo-accent">Max</span></span>
+      </div>
+
+      <nav class="nav">
+        <a class="nav-link active" data-view="dashboard">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </a>
+        <a class="nav-link" data-view="top25">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          Top 25 Overall
+        </a>
+        <a class="nav-link" data-view="under10k">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Under $10k
+        </a>
+
+        <div class="nav-divider">Strategies</div>
+
+        <a class="nav-link" data-view="discover">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          Discover
+        </a>
+        <a class="nav-link" data-view="strategy-ivr">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          IV Rank
+        </a>
+        <a class="nav-link" data-view="strategy-iv-hv">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          IV vs HV
+        </a>
+        <a class="nav-link" data-view="strategy-mr">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.5 18.5 8 13l4 4 9.5-10"/><polyline points="16 7 21.5 7 21.5 12.5"/></svg>
+          Mean Reversion
+        </a>
+
+        <div class="nav-sep"></div>
+
+        <a class="nav-link" data-view="settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          Settings
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-dot" id="status-dot"></div>
+        <span class="status-text" id="status-text">Loading…</span>
+        <button class="help-btn" id="help-btn" title="Help &amp; Guide">?</button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- Dashboard View -->
+      <section class="view active" id="view-dashboard">
+        <div class="view-header">
+          <h1 class="view-title">Dashboard</h1>
+          <button class="refresh-btn" id="refresh-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Refresh Data
+          </button>
+        </div>
+
+        <div class="metric-cards" id="metric-cards">
+          <div class="metric-card skeleton"><div class="metric-label">Avg. Monthly Yield</div><div class="metric-value">—</div></div>
+          <div class="metric-card skeleton"><div class="metric-label">Avg. Annualized Yield</div><div class="metric-value">—</div></div>
+          <div class="metric-card skeleton"><div class="metric-label">Top Premium Available</div><div class="metric-value">—</div></div>
+          <div class="metric-card skeleton"><div class="metric-label">Active Opportunities</div><div class="metric-value">—</div></div>
+        </div>
+
+        <div class="empty-state" id="empty-state" style="display:none">
+          <div class="empty-state-icon">◈</div>
+          <h3 class="empty-state-title">No stocks in your watchlists yet</h3>
+          <p class="empty-state-body">Add stocks to the IV Rank, IV vs HV, or Mean Reversion strategy watchlists, then click <strong>Refresh Data</strong> to run your first scan.</p>
+        </div>
+
+        <div class="preview-grid" id="preview-grid">
+          <div class="preview-section">
+            <div class="preview-header">
+              <h2 class="preview-title">Top 3 Overall</h2>
+              <span class="preview-badge">by yield</span>
+            </div>
+            <div class="preview-list" id="preview-overall"></div>
+          </div>
+          <div class="preview-section">
+            <div class="preview-header">
+              <h2 class="preview-title">Top 3 Under $10k</h2>
+              <span class="preview-badge">capital ≤ $10,000</span>
+            </div>
+            <div class="preview-list" id="preview-under10k"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Top 25 Overall View -->
+      <section class="view" id="view-top25">
+        <div class="view-header">
+          <h1 class="view-title">Top 25 Overall</h1>
+          <span class="view-subtitle">Best cash-secured put opportunities by annualized yield</span>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table" id="table-top25">
+            <thead>
+              <tr>
+                <th data-col="rank">#</th>
+                <th data-col="symbol">Symbol</th>
+                <th data-col="score">Score</th>
+                <th data-col="currentPrice">Stock Price</th>
+                <th data-col="strike">Strike</th>
+                <th data-col="dte">DTE</th>
+                <th data-col="premium">Premium</th>
+                <th data-col="capitalRequired">Capital Req.</th>
+                <th data-col="monthlyYield">Mo. Yield</th>
+                <th data-col="annualizedYield">Ann. Yield</th>
+                <th data-col="monthlyIncome">Mo. Income</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-top25"><tr><td colspan="12" class="empty-row">No data yet — click Refresh.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Under $10k View -->
+      <section class="view" id="view-under10k">
+        <div class="view-header">
+          <h1 class="view-title">Under $10k Capital</h1>
+          <span class="view-subtitle">Stocks priced ≤ $100 — capital requirement ≤ $10,000</span>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table" id="table-under10k">
+            <thead>
+              <tr>
+                <th data-col="rank">#</th>
+                <th data-col="symbol">Symbol</th>
+                <th data-col="score">Score</th>
+                <th data-col="currentPrice">Stock Price</th>
+                <th data-col="strike">Strike</th>
+                <th data-col="dte">DTE</th>
+                <th data-col="premium">Premium</th>
+                <th data-col="capitalRequired">Capital Req.</th>
+                <th data-col="monthlyYield">Mo. Yield</th>
+                <th data-col="annualizedYield">Ann. Yield</th>
+                <th data-col="monthlyIncome">Mo. Income</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-under10k"><tr><td colspan="12" class="empty-row">No data yet — click Refresh.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- IV Rank Strategy View -->
+      <section class="view" id="view-strategy-ivr">
+        <div class="view-header">
+          <h1 class="view-title">IV Rank Strategy</h1>
+          <span class="view-subtitle">Sell puts when IV is historically elevated</span>
+        </div>
+
+        <details class="strategy-desc" open>
+          <summary class="strategy-desc-toggle">
+            <svg class="desc-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            Strategy Description
+          </summary>
+          <div class="strategy-desc-body">
+            <p>Sell puts when IV is high relative to its own 52-week history. <strong>IV Rank</strong> = (current IV − min IV) / (max IV − min IV) × 100. <strong>IV Percentile</strong> = % of days in the past year where IV was below today's level.</p>
+            <div class="strategy-signals">
+              <div class="signal-item"><span class="signal-pip green"></span>IVR ≥ 70 — Strong signal (+2 pts)</div>
+              <div class="signal-item"><span class="signal-pip amber"></span>IVR ≥ 50 — Moderate signal (+2 pts)</div>
+              <div class="signal-item"><span class="signal-pip muted"></span>IVR &lt; 50 — Weak / no signal</div>
+            </div>
+            <p class="desc-note">IVR builds accuracy over time as the app accumulates scan history. Expect "—" until at least 10 scans are recorded for a stock.</p>
+          </div>
+        </details>
+
+        <div class="watchlist-section">
+          <div class="watchlist-row">
+            <span class="watchlist-label">Watchlist:</span>
+            <div class="watchlist-chips" id="chips-ivr"></div>
+            <div class="add-stock-form">
+              <input type="text" class="add-stock-input" id="add-input-ivr" placeholder="e.g. TSLA" maxlength="10" autocomplete="off" spellcheck="false" />
+              <button class="add-stock-btn" id="add-btn-ivr">+ Add</button>
+            </div>
+          </div>
+          <span class="add-stock-error" id="add-error-ivr"></span>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th><th>Symbol</th><th>Score</th>
+                <th>Price</th><th>Strike</th><th>DTE</th>
+                <th>IV%</th><th>IV/HV</th><th>IVR</th>
+                <th>Ann. Yield</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-ivr"><tr><td colspan="11" class="empty-row">Add stocks to your watchlist to get started.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- IV vs HV Strategy View -->
+      <section class="view" id="view-strategy-iv-hv">
+        <div class="view-header">
+          <h1 class="view-title">IV vs HV Strategy</h1>
+          <span class="view-subtitle">Sell puts when the market overprices future volatility</span>
+        </div>
+
+        <details class="strategy-desc" open>
+          <summary class="strategy-desc-toggle">
+            <svg class="desc-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            Strategy Description
+          </summary>
+          <div class="strategy-desc-body">
+            <p>Sell puts when the market is overpricing future volatility. Compare 30-day ATM implied volatility (IV) vs 30-day realized historical volatility (HV). A ratio <strong>IV/HV ≥ 1.3</strong> means the market is paying more than the stock has actually moved — statistically favoring the options seller.</p>
+            <div class="strategy-signals">
+              <div class="signal-item"><span class="signal-pip green"></span>IV/HV ≥ 1.5 — Premium is significantly overpriced (+2 pts)</div>
+              <div class="signal-item"><span class="signal-pip amber"></span>IV/HV ≥ 1.3 — Moderate volatility premium (+2 pts)</div>
+              <div class="signal-item"><span class="signal-pip muted"></span>IV/HV &lt; 1.3 — Insufficient premium</div>
+            </div>
+            <p class="desc-note">HV is computed fresh on each scan from the past 30 days of daily closes. IV/HV updates every time you run a scan.</p>
+          </div>
+        </details>
+
+        <div class="watchlist-section">
+          <div class="watchlist-row">
+            <span class="watchlist-label">Watchlist:</span>
+            <div class="watchlist-chips" id="chips-iv-hv"></div>
+            <div class="add-stock-form">
+              <input type="text" class="add-stock-input" id="add-input-iv-hv" placeholder="e.g. NVDA" maxlength="10" autocomplete="off" spellcheck="false" />
+              <button class="add-stock-btn" id="add-btn-iv-hv">+ Add</button>
+            </div>
+          </div>
+          <span class="add-stock-error" id="add-error-iv-hv"></span>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th><th>Symbol</th><th>Score</th>
+                <th>Price</th><th>Strike</th><th>DTE</th>
+                <th>IV%</th><th>IV/HV</th><th>IVR</th>
+                <th>Ann. Yield</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-iv-hv"><tr><td colspan="11" class="empty-row">Add stocks to your watchlist to get started.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Mean Reversion Strategy View -->
+      <section class="view" id="view-strategy-mr">
+        <div class="view-header">
+          <h1 class="view-title">Mean Reversion Strategy</h1>
+          <span class="view-subtitle">Sell puts after a fear spike, once IV starts declining</span>
+        </div>
+
+        <details class="strategy-desc" open>
+          <summary class="strategy-desc-toggle">
+            <svg class="desc-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            Strategy Description
+          </summary>
+          <div class="strategy-desc-body">
+            <p>Sell puts 1–2 days after a sharp IV spike, once IV confirms it is declining from the peak. Fear events (competitor earnings, macro data) cause IV to spike and then revert to the mean. Entry on day 2 of the decline captures high premium while reducing downside risk.</p>
+            <div class="strategy-signals">
+              <div class="signal-item"><span class="signal-pip green"></span>IV dropped ≥ 15% from recent peak (IVR was &gt; 70) — Signal active (+1 pt)</div>
+              <div class="signal-item"><span class="signal-pip muted"></span>No recent spike detected — Signal inactive</div>
+            </div>
+            <p class="desc-note">This signal requires at least 2 prior scans for a stock. The detector looks for a peak ≥ 40% IV in recent history with current IV at least 15% below that peak.</p>
+          </div>
+        </details>
+
+        <div class="watchlist-section">
+          <div class="watchlist-row">
+            <span class="watchlist-label">Watchlist:</span>
+            <div class="watchlist-chips" id="chips-mr"></div>
+            <div class="add-stock-form">
+              <input type="text" class="add-stock-input" id="add-input-mr" placeholder="e.g. AMD" maxlength="10" autocomplete="off" spellcheck="false" />
+              <button class="add-stock-btn" id="add-btn-mr">+ Add</button>
+            </div>
+          </div>
+          <span class="add-stock-error" id="add-error-mr"></span>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th><th>Symbol</th><th>Score</th>
+                <th>Price</th><th>Strike</th><th>DTE</th>
+                <th>IV%</th><th>IV/HV</th><th>IVR</th>
+                <th>Ann. Yield</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-mr"><tr><td colspan="11" class="empty-row">Add stocks to your watchlist to get started.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Discover View -->
+      <section class="view" id="view-discover">
+        <div class="view-header">
+          <h1 class="view-title">Discover</h1>
+          <span class="view-subtitle">Find top put-selling candidates across the market</span>
+        </div>
+
+        <div class="discover-intro" id="discover-intro">
+          <p class="discover-intro-text">
+            Scans the 100–150 most active and volatile stocks on Yahoo Finance and ranks the top 25
+            candidates per strategy. Fetches live options chains and 30-day historical volatility —
+            takes <strong>5–10 minutes</strong> to complete.
+          </p>
+          <div class="discover-sources">
+            <span class="discover-source-chip">Most Active</span>
+            <span class="discover-source-chip">Day Losers</span>
+            <span class="discover-source-chip">Growth Tech</span>
+          </div>
+          <button class="discover-run-btn" id="discover-run-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            Scan Market
+          </button>
+        </div>
+
+        <div class="discover-progress hidden" id="discover-progress">
+          <div class="discover-progress-header">
+            <span class="discover-progress-title" id="discover-progress-title">Fetching stock universe…</span>
+            <span class="discover-progress-count" id="discover-progress-count"></span>
+          </div>
+          <div class="discover-progress-track">
+            <div class="discover-progress-fill" id="discover-progress-fill" style="width:0%"></div>
+          </div>
+          <div class="discover-progress-symbol" id="discover-progress-symbol"></div>
+        </div>
+
+        <div class="discover-results hidden" id="discover-results">
+
+          <!-- IVR candidates -->
+          <div class="discover-group">
+            <div class="discover-group-header">
+              <span class="strategy-badge badge-ivr">IVR</span>
+              <div>
+                <h3 class="discover-group-title">Top IV Rank Candidates</h3>
+                <span class="discover-group-sub">Sorted by IV% (proxy for IVR when no scan history exists)</span>
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead><tr>
+                  <th>#</th><th>Symbol</th><th>Score</th>
+                  <th>IV%</th><th>IVR</th><th>IV/HV</th>
+                  <th>Ann. Yield</th>
+                </tr></thead>
+                <tbody id="discover-tbody-ivr"><tr><td colspan="7" class="empty-row">Run a scan to see candidates.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- IV/HV candidates -->
+          <div class="discover-group">
+            <div class="discover-group-header">
+              <span class="strategy-badge badge-iv-hv">IV/HV</span>
+              <div>
+                <h3 class="discover-group-title">Top IV vs HV Candidates</h3>
+                <span class="discover-group-sub">Sorted by IV/HV ratio — higher means the market is overpricing future volatility</span>
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead><tr>
+                  <th>#</th><th>Symbol</th><th>Score</th>
+                  <th>IV%</th><th>IV/HV</th><th>IVR</th>
+                  <th>Ann. Yield</th>
+                </tr></thead>
+                <tbody id="discover-tbody-iv-hv"><tr><td colspan="7" class="empty-row">Run a scan to see candidates.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Mean Reversion candidates -->
+          <div class="discover-group">
+            <div class="discover-group-header">
+              <span class="strategy-badge badge-mr">MR</span>
+              <div>
+                <h3 class="discover-group-title">Top Mean Reversion Candidates</h3>
+                <span class="discover-group-sub">Active signal stocks first, then sorted by score</span>
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead><tr>
+                  <th>#</th><th>Symbol</th><th>Score</th>
+                  <th>IV%</th><th>IV/HV</th><th>MR Signal</th>
+                  <th>Ann. Yield</th>
+                </tr></thead>
+                <tbody id="discover-tbody-mr"><tr><td colspan="7" class="empty-row">Run a scan to see candidates.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="discover-footer">
+            <span class="discover-summary" id="discover-summary"></span>
+            <button class="discover-run-btn discover-run-again" id="discover-run-again-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Scan Again
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings View -->
+      <section class="view" id="view-settings">
+        <div class="view-header">
+          <h1 class="view-title">Settings</h1>
+        </div>
+
+        <div class="settings-grid">
+
+          <!-- List Refresh Card -->
+          <div class="settings-card">
+            <div class="settings-card-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              List Refresh
+            </div>
+            <p class="settings-card-desc">Scans all watchlist stocks for new options opportunities. This is the main data fetch — run it when you want fresh opportunity data.</p>
+
+            <div class="settings-field">
+              <label class="settings-field-label" for="interval-select">Scan every</label>
+              <select class="schedule-select" id="interval-select">
+                <option value="7">7 days</option>
+                <option value="14" selected>14 days</option>
+                <option value="21">21 days</option>
+                <option value="30">30 days</option>
+              </select>
+              <p class="setting-desc" id="interval-desc"></p>
+            </div>
+
+            <div class="settings-field">
+              <label class="settings-field-label" for="margin-select">Min. Margin (OTM)</label>
+              <select class="schedule-select" id="margin-select">
+                <option value="0">0% — nearest strike</option>
+                <option value="5" selected>5%</option>
+                <option value="7.5">7.5%</option>
+                <option value="10">10%</option>
+                <option value="12.5">12.5%</option>
+                <option value="15">15%</option>
+              </select>
+              <p class="setting-desc" id="margin-desc"></p>
+            </div>
+
+            <div class="settings-progress hidden" id="fetch-progress-wrap">
+              <div class="settings-progress-header">
+                <span class="settings-progress-label" id="fetch-progress-label">Scanning…</span>
+                <span class="settings-progress-count" id="fetch-progress-count"></span>
+              </div>
+              <div class="settings-progress-track">
+                <div class="settings-progress-fill" id="fetch-progress-fill" style="width:0%"></div>
+              </div>
+              <div class="settings-progress-symbol" id="fetch-progress-symbol"></div>
+            </div>
+
+            <button class="settings-action-btn" id="sidebar-refresh-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Refresh List Now
+            </button>
+
+            <div class="schedule-dates settings-dates">
+              <div class="schedule-date-row">
+                <span class="schedule-date-key">Last run</span>
+                <span class="schedule-date-val" id="last-updated-date">—</span>
+              </div>
+              <div class="schedule-date-row last-margin-row" id="last-margin-row" style="display:none">
+                <span class="schedule-date-key">↳ margin</span>
+                <span class="schedule-date-val" id="last-margin-used">—</span>
+              </div>
+              <div class="schedule-date-row">
+                <span class="schedule-date-key">Next run</span>
+                <span class="schedule-date-val cyan" id="next-refresh-date">—</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Price Update Card -->
+          <div class="settings-card settings-card-price">
+            <div class="settings-card-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              Price Update
+            </div>
+            <p class="settings-card-desc">Refreshes current stock prices for all tracked opportunities without re-running the full options scan.</p>
+
+            <div class="settings-field">
+              <label class="settings-field-label" for="price-interval-select">Update every</label>
+              <select class="schedule-select" id="price-interval-select">
+                <option value="6">6 hours</option>
+                <option value="12">12 hours</option>
+                <option value="24" selected>24 hours</option>
+                <option value="0">Manual only</option>
+              </select>
+              <p class="setting-desc" id="price-interval-desc"></p>
+            </div>
+
+            <div class="settings-progress hidden" id="price-progress-wrap">
+              <div class="settings-progress-header">
+                <span class="settings-progress-label" id="price-progress-label">Updating prices…</span>
+                <span class="settings-progress-count" id="price-progress-count"></span>
+              </div>
+              <div class="settings-progress-track">
+                <div class="settings-progress-fill settings-progress-fill-price" id="price-progress-fill" style="width:0%"></div>
+              </div>
+              <div class="settings-progress-symbol" id="price-progress-symbol"></div>
+            </div>
+
+            <button class="settings-action-btn settings-action-btn-price" id="price-refresh-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Update Prices Now
+            </button>
+
+            <div class="schedule-dates settings-dates">
+              <div class="schedule-date-row">
+                <span class="schedule-date-key">Last run</span>
+                <span class="schedule-date-val" id="last-priced-date">—</span>
+              </div>
+              <div class="schedule-date-row">
+                <span class="schedule-date-key">Next run</span>
+                <span class="schedule-date-val cyan" id="next-price-date">—</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Analysis Modal -->
+  <div class="modal-overlay hidden" id="modal-overlay">
+    <div class="modal">
+      <button class="modal-close" id="modal-close">✕</button>
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-company" id="modal-company">—</h2>
+          <span class="modal-exchange" id="modal-exchange">—</span>
+          <div class="modal-strategy-badges" id="modal-strategy-badges"></div>
+        </div>
+        <div class="modal-symbol-badge" id="modal-symbol-badge">—</div>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-left">
+          <div class="chart-container">
+            <canvas id="price-chart"></canvas>
+          </div>
+          <div class="mechanics-box">
+            <h3 class="mechanics-title">Trade Mechanics</h3>
+            <p class="mechanics-text" id="mechanics-text">—</p>
+          </div>
+        </div>
+        <div class="modal-right">
+          <h3 class="stats-title">Advanced Stats</h3>
+          <div class="stats-grid" id="stats-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help Modal -->
+  <div class="help-overlay hidden" id="help-overlay">
+    <div class="help-modal">
+      <button class="help-close" id="help-close">✕</button>
+      <h2 class="help-title">OptMax Guide</h2>
+      <div class="help-body">
+
+        <div class="help-section">
+          <h3>What is OptMax?</h3>
+          <p>OptMax scans your watchlists for cash-secured put opportunities. You manage which stocks to screen for each strategy, and OptMax evaluates them against volatility signals to surface the best yield opportunities.</p>
+        </div>
+
+        <div class="help-section">
+          <h3>The 3 Strategies</h3>
+
+          <div class="help-strategy">
+            <div class="help-strategy-badge badge-ivr">IVR</div>
+            <div>
+              <strong>IV Rank</strong> — Sell puts when IV is high relative to its own 52-week range. IV Rank = (current IV − min IV) / (max IV − min IV) × 100. Scores +2 points when IVR ≥ 50. Best used on stocks with consistent IV history.
+            </div>
+          </div>
+
+          <div class="help-strategy">
+            <div class="help-strategy-badge badge-iv-hv">IV/HV</div>
+            <div>
+              <strong>IV vs HV</strong> — Sell puts when implied volatility exceeds 30-day realized (historical) volatility by ≥ 1.3×. This means the market is pricing in more movement than the stock has actually made, statistically favoring the seller. Scores +2 points when IV/HV ≥ 1.3.
+            </div>
+          </div>
+
+          <div class="help-strategy">
+            <div class="help-strategy-badge badge-mr">MR</div>
+            <div>
+              <strong>Mean Reversion</strong> — Sell puts 1–2 days after a fear spike, once IV is confirmed declining. OptMax detects a spike when IV in recent scan history reached ≥ 40% and current IV has since dropped ≥ 15% from that peak. Scores +1 point when signal is active.
+            </div>
+          </div>
+        </div>
+
+        <div class="help-section">
+          <h3>Signal Score (0–5)</h3>
+          <p>Each stock receives a composite score based on active signals:</p>
+          <ul class="help-list">
+            <li><span class="score-dots score-2">●●</span> +2 pts — IVR ≥ 50</li>
+            <li><span class="score-dots score-2">●●</span> +2 pts — IV/HV ≥ 1.3</li>
+            <li><span class="score-dots score-1">●</span> +1 pt — Mean reversion signal active</li>
+          </ul>
+          <p>A score of 4–5 indicates multiple signals aligning — the highest-conviction setups.</p>
+        </div>
+
+        <div class="help-section">
+          <h3>Common Filters (all strategies)</h3>
+          <ul class="help-list">
+            <li>Open interest &gt; 500 contracts</li>
+            <li>Bid-ask spread ≤ $0.10</li>
+            <li>Implied volatility &gt; 15%</li>
+            <li>No earnings events within the option's expiration window</li>
+          </ul>
+          <p>Stocks that don't pass these filters won't appear in scan results even if they're in a watchlist.</p>
+        </div>
+
+        <div class="help-section">
+          <h3>Managing Watchlists</h3>
+          <p>Each strategy has its own watchlist. Type a ticker symbol and click <strong>+ Add</strong> to add it. Symbols are validated against Yahoo Finance before being saved. Click <strong>×</strong> on a chip to remove a stock.</p>
+          <p>A stock can appear in multiple strategy watchlists and will show in each view with the appropriate badges.</p>
+        </div>
+
+        <div class="help-section">
+          <h3>Refresh Schedule</h3>
+          <p><strong>List Refresh</strong> — Runs a full options scan on all watchlist stocks and recomputes all metrics including HV, IVR, and IV/HV. Set your preferred interval (7–30 days) in the sidebar.</p>
+          <p><strong>Price Update</strong> — Lightweight update that refreshes only the current stock prices. IV and volatility metrics are not recalculated. Set to Manual if you prefer to control timing.</p>
+          <p>IVR accuracy improves with each scan — the app stores per-symbol IV history and builds a 52-week range over time.</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

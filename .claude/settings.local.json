@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(New-Item *)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\jctol\\\\Downloads\\\\OptMax\" -Recurse -Exclude node_modules | Where-Object { !$_.FullName.Contains\\('node_modules'\\) } | Select-Object FullName)",
+      "PowerShell(cd \"C:\\\\Users\\\\jctol\\\\Downloads\\\\OptMax\"; $env:ELECTRON_ENABLE_LOGGING=1; Start-Process -FilePath \".\\\\node_modules\\\\.bin\\\\electron.cmd\" -ArgumentList \".\" -NoNewWindow -PassThru | Select-Object Id)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Stop-Process *)",
+      "Skill(run)"
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "optmax",
+  "version": "1.0.0",
+  "description": "Cash-Secured Puts Tracker",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "test": "node test/strategies.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "yahoo-finance2": "^3.15.3"
+  },
+  "devDependencies": {
+    "electron": "^42.4.1",
+    "electron-builder": "^26.15.3",
+    "playwright-core": "^1.61.0"
+  },
+  "build": {
+    "appId": "com.optmax.app",
+    "productName": "OptMax",
+    "directories": {
+      "output": "dist"
+    },
+"win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}

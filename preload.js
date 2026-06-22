@@ -1,0 +1,41 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('electronAPI', {
+  loadInitialData:      ()               => ipcRenderer.invoke('load-initial-data'),
+  fetchData:            ()               => ipcRenderer.invoke('fetch-data'),
+  fetchPrices:          ()               => ipcRenderer.invoke('fetch-prices'),
+  fetchHistory:         (symbol)         => ipcRenderer.invoke('fetch-history', symbol),
+  getSettings:          ()               => ipcRenderer.invoke('get-settings'),
+  saveSettings:         (settings)       => ipcRenderer.invoke('save-settings', settings),
+
+  // Watchlist management
+  getWatchlists:        ()               => ipcRenderer.invoke('get-watchlists'),
+  addToWatchlist:       (payload)        => ipcRenderer.invoke('add-to-watchlist', payload),
+  removeFromWatchlist:  (payload)        => ipcRenderer.invoke('remove-from-watchlist', payload),
+
+  // Discovery
+  runDiscovery:           ()   => ipcRenderer.invoke('run-discovery'),
+  onDiscoveryProgress:    (cb) => ipcRenderer.on('discovery-progress', (_e, d) => cb(d)),
+  offDiscoveryProgress:   ()   => ipcRenderer.removeAllListeners('discovery-progress'),
+
+  // Manual refresh / price-update progress
+  onFetchProgress:        (cb) => ipcRenderer.on('fetch-progress', (_e, d) => cb(d)),
+  offFetchProgress:       ()   => ipcRenderer.removeAllListeners('fetch-progress'),
+  onPriceProgress:        (cb) => ipcRenderer.on('price-progress', (_e, d) => cb(d)),
+  offPriceProgress:       ()   => ipcRenderer.removeAllListeners('price-progress'),
+
+  // Window controls
+  minimizeWindow: () => ipcRenderer.send('window-minimize'),
+  maximizeWindow: () => ipcRenderer.send('window-maximize'),
+  closeWindow:    () => ipcRenderer.send('window-close'),
+
+  // Full list refresh events (pushed from main)
+  onAutoFetchStart: (cb) => ipcRenderer.on('auto-fetch-start', cb),
+  onAutoFetchDone:  (cb) => ipcRenderer.on('auto-fetch-done',  (_e, p) => cb(p)),
+  onAutoFetchError: (cb) => ipcRenderer.on('auto-fetch-error', (_e, m) => cb(m)),
+
+  // Price update events (pushed from main)
+  onAutoPriceStart: (cb) => ipcRenderer.on('auto-price-start', cb),
+  onAutoPriceDone:  (cb) => ipcRenderer.on('auto-price-done',  (_e, p) => cb(p)),
+  onAutoPriceError: (cb) => ipcRenderer.on('auto-price-error', (_e, m) => cb(m)),
+});
