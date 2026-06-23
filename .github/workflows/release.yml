@@ -7,8 +7,21 @@ on:
   workflow_dispatch:
 
 jobs:
-  release:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create Draft Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} --draft --title "${{ github.ref_name }}" --notes "Release ${{ github.ref_name }}" || echo "Release already exists"
+
+  build:
     name: Build and Release (${{ matrix.os }})
+    needs: create-release
     runs-on: ${{ matrix.os }}
 
     strategy:
