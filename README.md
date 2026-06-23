@@ -8,64 +8,75 @@ A desktop application for finding and tracking cash-secured put opportunities. O
 
 ---
 
+## Screenshots
+
+![Dashboard](scripts/shots/01-dashboard.png)
+![Screener](scripts/shots/02-screener.png)
+![Settings](scripts/shots/08-settings.png)
+![Help Guide](scripts/shots/09-help-modal.png)
+
+---
+
 ## Features
 
 ### Opportunity Discovery
-- **Market Scanner** — Scans the **200–300** most active and volatile stocks on Yahoo Finance, runs full options analysis across three strategies, and ranks the candidates.
-- **Auto-Watchlist & Cache Merge** — Discovered opportunities are automatically added to the unified watchlist and merged directly into the main data cache with fresh timestamps, making them instantly visible across all screens.
-- **Smart 1h Freshness Bypass** — Full options scans and price updates are skipped for any stock if its cached data is less than 1 hour fresh and contains `marketCap` data, preventing API rate-limiting and ensuring blazing-fast stock additions.
+- **Market Scanner (Discover)** — Scans the **200–300** most active and volatile stocks on Yahoo Finance across three source lists (Most Active, Day Losers, Growth Tech), runs full options analysis, and ranks every candidate by composite score. Results are automatically added to your Watchlist and merged into the main data cache.
+- **Smart 1h Freshness Bypass** — Full options scans and price updates are skipped for any stock if its cached data is less than 1 hour old and contains `marketCap` data, preventing API rate-limiting and ensuring fast stock additions.
 
 ### The 100-Point Scoring Engine
 Each opportunity is evaluated across five core risk-return dimensions:
-- <span style="color:var(--cyan)">**Volatility (35 pts)**</span> — IV Rank (max 25 pts) + IV/HV Ratio (max 10 pts).
-- <span style="color:var(--cyan)">**Yield (25 pts)**</span> — Monthly Yield % (max 15 pts) + Absolute Implied Volatility (max 10 pts).
-- <span style="color:var(--cyan)">**Strike Quality (20 pts)**</span> — Delta sweet-spot (max 10 pts) + Support bounce check (max 10 pts).
-- <span style="color:var(--cyan)">**Liquidity (12 pts)**</span> — Open Interest (max 6 pts) + Bid-Ask Spread (max 6 pts).
-- <span style="color:var(--cyan)">**Trend (8 pts)**</span> — Position above MA50 (max 4 pts) + Earnings event cleared (max 4 pts).
+- **Volatility (35 pts)** — IV Rank (max 25 pts) + IV/HV Ratio (max 10 pts).
+- **Yield (25 pts)** — Monthly Yield % (max 15 pts) + Absolute Implied Volatility (max 10 pts).
+- **Strike Quality (20 pts)** — Delta sweet-spot (max 10 pts) + Support bounce check (max 10 pts).
+- **Liquidity (12 pts)** — Open Interest (max 6 pts) + Bid-Ask Spread (max 6 pts).
+- **Trend (8 pts)** — Position above MA50 (max 4 pts) + Earnings event cleared (max 4 pts).
 
 ### Letter Grades (A–F)
-Scores are mapped to a clear letter grade scale with professional color-coded badges:
-- <span class="grade-badge grade-badge-A">A</span> &gt; 50 pts — Strong buy (Green)
-- <span class="grade-badge grade-badge-B">B</span> ≥ 40 pts — Good entry (Teal)
-- <span class="grade-badge grade-badge-C">C</span> ≥ 30 pts — Marginal (Amber)
-- <span class="grade-badge grade-badge-D">D</span> ≥ 20 pts — Weak (Orange)
-- <span class="grade-badge grade-badge-E">E</span> ≥ 1 pt — Avoid (Red)
-- <span class="grade-badge grade-badge-F">F</span> Blocked — Score of 0 or Kill switch active (Muted Gray)
+Scores map to a clear letter grade scale with color-coded badges:
+- **A** ≥ 50 pts — Strong buy (Green)
+- **B** ≥ 40 pts — Good entry (Teal)
+- **C** ≥ 30 pts — Marginal (Amber)
+- **D** ≥ 20 pts — Weak (Orange)
+- **E** ≥ 1 pt — Avoid (Red)
+- **F** Blocked — Score of 0 or Kill switch active (Muted Gray)
 
 ### Active Safety Kill Switches
 Scoring is overridden to 0 (Grade F) if any active risk filter is triggered:
 - Earnings event inside the option's expiry window.
 - Bid-ask spread wider than `$0.50` (liquidity block).
 - Absolute implied volatility above `80%` (extreme danger zone).
-- *Kill switches can be toggled individually under Settings.*
+- *Kill switches can be toggled individually under Settings → Scoring Configuration.*
 
 ### High-Impact Dashboard
-- **Sleek Metric Cards** — Compacted top row showing **Watchlist Stocks** and **Graded Opportunities** side-by-side. The Graded Opportunities card features inline colored sub-boxes showing active counts per grade, automatically hiding zero-count categories.
-- **Stacked Yield Display** — Dashboard items stack **Monthly Yield** (prominent green, e.g. `1.50%/mo`) as the main highlight directly below **Yearly/Annualized Yield** (secondary gray, e.g. `18.00%/yr`).
-- **Top 10 Previews** — Lists the highest-yielding opportunities across:
-  - **Top 10 Overall** (score > 0)
-  - **Top 10 < $10k** (priced ≤ $100, score > 0)
-  - **Top 10 Mega Caps** (market cap ≥ $200B, includes blocked/0-score items)
-  - **Starred Stocks** (your favorites toggled in Screener/details)
+- **Metric Cards** — Compacted top row showing **Watchlist Stocks** and **Graded Opportunities** side-by-side. The Graded Opportunities card features inline colored sub-boxes showing active counts per grade, hiding zero-count categories automatically.
+- **Stacked Yield Display** — Each list item shows **Monthly Yield** (prominent green) stacked above **Yearly/Annualized Yield** (secondary gray).
+- **Four Top-10 Previews** — Highest-yielding opportunities across: **Top 10 Overall**, **Top 10 < $10k**, **Top 10 Mega Caps** (mkt cap ≥ $200B), and **Starred Stocks**.
 
-### Interactive Screener & Sorting
-- **Multi-Column Click-to-Sort** — Click any table header (including Score, Symbol, Price, Strike, Yields, DTE, etc.) to toggle ascending or descending order.
-- **Advanced Filtering Sliders** — Set interactive sliders to filter by Minimum Score, Min Monthly Yield, Min Market Cap, and a dual-thumb overlapping Price Range selector.
+### Screener
+- **Full Watchlist Table** — Every watchlisted stock ranked by composite score with columns for Price, Market Cap, Score, Grade, IVR, IV/HV, Monthly Yield, and a Score Bar.
+- **Multi-Column Click-to-Sort** — Click any column header to toggle ascending/descending order.
+- **Advanced Filters** — Interactive sliders for Minimum Score, Min Monthly Yield, and Min Market Cap; a dual-thumb Price Range selector; and a Grade filter chip row (All / A / B / C).
+- **Watchlist Management** — Add tickers directly from the Screener input. Starred stocks are persisted and sync across all views.
+
+### Ranked List Views
+Four dedicated sorted tables, each sortable by any column:
+- **Top 25 Overall** — Best opportunities by annualized yield (score > 0).
+- **Top 25 Under $10k** — Stocks priced ≤ $100 (capital requirement ≤ $10,000, score > 0).
+- **Top 25 Mega Caps** — Market cap ≥ $200B, includes blocked/0-score items.
+- **Starred Stocks** — Your favorited opportunities.
 
 ### Deep-Dive Analysis Modal
-Click **Analyze** or **Detail** on any row to open a deep-dive window with:
+Click **Detail** on any row to open a modal with:
 - 30-day stock price chart with smooth gradient fill.
 - Trade mechanics explained in plain English.
-- Destructive **Danger Block Explanations** explaining exactly which active kill switch blocked the opportunity.
-- Options data grid and a persistent Star (`☆`/`★`) button to mark favorites.
+- Danger Block explanations detailing exactly which kill switch blocked the opportunity.
+- Options data grid and a persistent Star (☆/★) toggle to mark favorites.
 
----
-
-## Screenshots
-
-![Dashboard](scripts/shots/01-dashboard.png)
-![Top 25 Opportunities](scripts/shots/04-strategy-iv-hv.png)
-![Help Modal](scripts/shots/03-help-modal.png)
+### Settings
+- **Opportunity Data** — Configure scan interval and minimum OTM margin; trigger a manual refresh.
+- **Price Update** — Set automatic price refresh cadence or trigger on demand.
+- **Scoring Configuration** — Adjust grade thresholds (A–E), enable/disable each kill switch, set yield targets, and configure the preferred delta range.
+- **Danger Zone** — Reset all data to start fresh.
 
 ---
 
@@ -100,7 +111,7 @@ npm start
 
 ```bash
 npm run build
-# Output: dist/OptMax Setup 1.1.1.exe
+# Output: dist/OptMax Setup 1.2.0.exe
 ```
 
 ---
@@ -111,7 +122,7 @@ npm run build
 npm test
 ```
 
-37 unit and structure validation tests covering HV calculations, IVR calculations, Mean Reversion signals, scoring config defaults, and SEED validation.
+59 unit tests covering HV calculations, IVR calculations, Mean Reversion signals, the legacy composite scorer, the full 100-Point Scoring Engine (kill switches, grade assignment, per-dimension scoring, config overrides), and seed data validation.
 
 ---
 

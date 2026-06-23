@@ -1,4 +1,4 @@
-// One-shot smoke test: launch → wait for load → screenshot → check UI state → quit
+// One-shot smoke test: launch → wait for load → screenshot every view → check UI state → quit
 import { _electron as electron } from 'playwright-core';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -23,57 +23,75 @@ const page = app.windows().find(w => !w.url().startsWith('devtools://'))
 await page.waitForLoadState('domcontentloaded');
 console.log('Window loaded:', page.url());
 
-// Wait for the app's boot sequence (initSettingsUI + initWatchlists + loadInitialData)
+// Wait for boot sequence (initSettingsUI + initWatchlists + loadInitialData)
 await page.waitForSelector('#status-text', { timeout: 10_000 });
-await new Promise(r => setTimeout(r, 3_000)); // let async boot settle
+await new Promise(r => setTimeout(r, 3_000));
 
-// ── Screenshot 1: Dashboard ───────────────────────────────────────────────────
-const shot1 = path.join(SHOT_DIR, '01-dashboard.png');
-await page.screenshot({ path: shot1 });
-console.log('Screenshot:', shot1);
+// Helper: navigate to a view by data-view attribute
+async function nav(viewId) {
+  await page.evaluate(id => {
+    document.querySelector(`.nav-link[data-view="${id}"]`)?.click();
+  }, viewId);
+  await new Promise(r => setTimeout(r, 400));
+}
+
+// Helper: take a numbered screenshot
+async function shot(name) {
+  const f = path.join(SHOT_DIR, name + '.png');
+  await page.screenshot({ path: f });
+  console.log('Screenshot:', f);
+  return f;
+}
+
+// ── 01 Dashboard ─────────────────────────────────────────────────────────────
+await shot('01-dashboard');
 
 // ── Read UI state ─────────────────────────────────────────────────────────────
 const state = await page.evaluate(() => ({
-  statusText:  document.getElementById('status-text')?.textContent,
-  activeView:  document.querySelector('.view.active')?.id,
-  navLinks:    [...document.querySelectorAll('.nav-link')].map(l => l.textContent.trim()),
-  strategyViews: ['view-strategy-ivr', 'view-strategy-iv-hv', 'view-strategy-mr']
+  statusText: document.getElementById('status-text')?.textContent,
+  activeView: document.querySelector('.view.active')?.id,
+  navLinks:   [...document.querySelectorAll('.nav-link')].map(l => l.textContent.trim()),
+  views: ['view-dashboard','view-screener','view-top25','view-under10k',
+          'view-megacaps','view-favorites','view-discover','view-settings']
     .map(id => ({ id, exists: !!document.getElementById(id) })),
-  chipsIvr:    document.getElementById('chips-ivr')?.textContent?.trim(),
-  helpBtn:     !!document.getElementById('help-btn'),
+  helpBtn: !!document.getElementById('help-btn'),
 }));
 
 console.log('\nUI state:');
 console.log(JSON.stringify(state, null, 2));
 
-// ── Navigate to IV Rank strategy view ────────────────────────────────────────
-await page.evaluate(() => {
-  document.querySelector('[data-view="strategy-ivr"]')?.click();
-});
-await new Promise(r => setTimeout(r, 500));
+// ── 02 Screener ───────────────────────────────────────────────────────────────
+await nav('screener');
+await shot('02-screener');
 
-const shot2 = path.join(SHOT_DIR, '02-strategy-ivr.png');
-await page.screenshot({ path: shot2 });
-console.log('\nScreenshot:', shot2);
+// ── 03 Top 25 Overall ────────────────────────────────────────────────────────
+await nav('top25');
+await shot('03-top25');
 
-// ── Open help modal ───────────────────────────────────────────────────────────
+// ── 04 Top 25 Under $10k ─────────────────────────────────────────────────────
+await nav('under10k');
+await shot('04-under10k');
+
+// ── 05 Mega Caps ─────────────────────────────────────────────────────────────
+await nav('megacaps');
+await shot('05-megacaps');
+
+// ── 06 Starred Stocks ────────────────────────────────────────────────────────
+await nav('favorites');
+await shot('06-favorites');
+
+// ── 07 Discover ──────────────────────────────────────────────────────────────
+await nav('discover');
+await shot('07-discover');
+
+// ── 08 Settings ──────────────────────────────────────────────────────────────
+await nav('settings');
+await shot('08-settings');
+
+// ── 09 Help modal ─────────────────────────────────────────────────────────────
 await page.evaluate(() => document.getElementById('help-btn')?.click());
 await new Promise(r => setTimeout(r, 400));
-
-const shot3 = path.join(SHOT_DIR, '03-help-modal.png');
-await page.screenshot({ path: shot3 });
-console.log('Screenshot:', shot3);
-
-// ── Navigate to IV vs HV ─────────────────────────────────────────────────────
-await page.evaluate(() => {
-  document.getElementById('help-close')?.click();
-  setTimeout(() => document.querySelector('[data-view="strategy-iv-hv"]')?.click(), 200);
-});
-await new Promise(r => setTimeout(r, 800));
-
-const shot4 = path.join(SHOT_DIR, '04-strategy-iv-hv.png');
-await page.screenshot({ path: shot4 });
-console.log('Screenshot:', shot4);
+await shot('09-help-modal');
 
 await app.close();
 console.log('\nDone. Check scripts/shots/ for screenshots.');
