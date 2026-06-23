@@ -6,7 +6,12 @@
       "PowerShell(cd \"C:\\\\Users\\\\jctol\\\\Downloads\\\\OptMax\"; $env:ELECTRON_ENABLE_LOGGING=1; Start-Process -FilePath \".\\\\node_modules\\\\.bin\\\\electron.cmd\" -ArgumentList \".\" -NoNewWindow -PassThru | Select-Object Id)",
       "PowerShell(Get-Process *)",
       "PowerShell(Stop-Process *)",
-      "Skill(run)"
+      "Skill(run)",
+      "Bash(npm test *)",
+      "Bash(git push *)",
+      "Bash(git fetch *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
