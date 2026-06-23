@@ -48,9 +48,10 @@ async function analyzeSingleSymbol(symbol) {
     const histEnd   = new Date();
     const histStart = new Date();
     histStart.setDate(histStart.getDate() - 35);
-    const history = await yahooFinance.historical(symbol, {
+    const chartResult = await yahooFinance.chart(symbol, {
       period1: histStart, period2: histEnd, interval: '1d'
     });
+    const history = chartResult.quotes || [];
     const closes = history.map(h => h.close).filter(c => c > 0);
     const hv = computeHV(closes);
 

@@ -1,6 +1,6 @@
 # OptMax
 
-A desktop application for finding and tracking cash-secured put opportunities. OptMax scans options chains in real time, scores each opportunity across three volatility strategies, and surfaces the top 25 candidates — so you spend less time screening and more time trading.
+A desktop application for finding and tracking cash-secured put opportunities. OptMax scans options chains in real time, scores each opportunity using a unified **100-Point Scoring Engine**, and ranks them across multi-column sortable lists — so you spend less time screening and more time trading.
 
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![Electron](https://img.shields.io/badge/Electron-42-47848F?logo=electron)
@@ -11,44 +11,61 @@ A desktop application for finding and tracking cash-secured put opportunities. O
 ## Features
 
 ### Opportunity Discovery
-- **Market Scanner** — scans Yahoo Finance screeners (Most Active, Day Losers, Growth Tech) to find fresh put-selling candidates across three strategies
-- **Per-symbol caching** — already-scanned symbols are reused for the day; only new ones are fetched, with a live progress bar showing cached vs. fetching counts
-- **Auto-add to watchlists** — discovered stocks are automatically added to the relevant strategy watchlists
+- **Market Scanner** — Scans the **200–300** most active and volatile stocks on Yahoo Finance, runs full options analysis across three strategies, and ranks the candidates.
+- **Auto-Watchlist & Cache Merge** — Discovered opportunities are automatically added to the unified watchlist and merged directly into the main data cache with fresh timestamps, making them instantly visible across all screens.
+- **Smart 1h Freshness Bypass** — Full options scans and price updates are skipped for any stock if its cached data is less than 1 hour fresh and contains `marketCap` data, preventing API rate-limiting and ensuring blazing-fast stock additions.
 
-### Strategy Views
-Three distinct strategy lenses, each ranking up to 25 stocks:
+### The 100-Point Scoring Engine
+Each opportunity is evaluated across five core risk-return dimensions:
+- <span style="color:var(--cyan)">**Volatility (35 pts)**</span> — IV Rank (max 25 pts) + IV/HV Ratio (max 10 pts).
+- <span style="color:var(--cyan)">**Yield (25 pts)**</span> — Monthly Yield % (max 15 pts) + Absolute Implied Volatility (max 10 pts).
+- <span style="color:var(--cyan)">**Strike Quality (20 pts)**</span> — Delta sweet-spot (max 10 pts) + Support bounce check (max 10 pts).
+- <span style="color:var(--cyan)">**Liquidity (12 pts)**</span> — Open Interest (max 6 pts) + Bid-Ask Spread (max 6 pts).
+- <span style="color:var(--cyan)">**Trend (8 pts)**</span> — Position above MA50 (max 4 pts) + Earnings event cleared (max 4 pts).
 
-| Strategy | Signal | Best for |
-|---|---|---|
-| **IV Rank (IVR)** | Current IV is high relative to its 52-week range | Selling premium when volatility is historically elevated |
-| **IV vs HV** | Implied volatility exceeds historical volatility | Options are overpriced relative to realized moves |
-| **Mean Reversion** | IV spiked then pulled back, suggesting a vol crush | Fading panic — selling puts after a volatility event |
+### Letter Grades (A–F)
+Scores are mapped to a clear letter grade scale with professional color-coded badges:
+- <span class="grade-badge grade-badge-A">A</span> &gt; 50 pts — Strong buy (Green)
+- <span class="grade-badge grade-badge-B">B</span> ≥ 40 pts — Good entry (Teal)
+- <span class="grade-badge grade-badge-C">C</span> ≥ 30 pts — Marginal (Amber)
+- <span class="grade-badge grade-badge-D">D</span> ≥ 20 pts — Weak (Orange)
+- <span class="grade-badge grade-badge-E">E</span> ≥ 1 pt — Avoid (Red)
+- <span class="grade-badge grade-badge-F">F</span> Blocked — Score of 0 or Kill switch active (Muted Gray)
 
-### Rankings
-- **Top 25 Overall** — all watchlist stocks ranked by annualized yield
-- **Under $10k Capital** — same ranking filtered to stocks ≤ $100 (capital requirement ≤ $10,000)
-- Both tables include a **signal score** (●●●●○) and **click-to-sort** on every column
+### Active Safety Kill Switches
+Scoring is overridden to 0 (Grade F) if any active risk filter is triggered:
+- Earnings event inside the option's expiry window.
+- Bid-ask spread wider than `$0.50` (liquidity block).
+- Absolute implied volatility above `80%` (extreme danger zone).
+- *Kill switches can be toggled individually under Settings.*
 
-### Deep-Dive Analysis
-Click **Analyze** on any row to open a modal with:
-- 30-day price chart with gradient fill
-- Trade mechanics explained in plain English
-- Implied Volatility, IV Rank, IV/HV ratio, Break-Even, Margin of Safety
+### High-Impact Dashboard
+- **Sleek Metric Cards** — Compacted top row showing **Watchlist Stocks** and **Graded Opportunities** side-by-side. The Graded Opportunities card features inline colored sub-boxes showing active counts per grade, automatically hiding zero-count categories.
+- **Stacked Yield Display** — Dashboard items stack **Monthly Yield** (prominent green, e.g. `1.50%/mo`) as the main highlight directly below **Yearly/Annualized Yield** (secondary gray, e.g. `18.00%/yr`).
+- **Top 10 Previews** — Lists the highest-yielding opportunities across:
+  - **Top 10 Overall** (score > 0)
+  - **Top 10 < $10k** (priced ≤ $100, score > 0)
+  - **Top 10 Mega Caps** (market cap ≥ $200B, includes blocked/0-score items)
+  - **Starred Stocks** (your favorites toggled in Screener/details)
 
-### Settings
-- Configure scan interval and minimum OTM margin
-- Live progress bars for both List Refresh and Price Update operations
-- Last run / next scheduled run timestamps
+### Interactive Screener & Sorting
+- **Multi-Column Click-to-Sort** — Click any table header (including Score, Symbol, Price, Strike, Yields, DTE, etc.) to toggle ascending or descending order.
+- **Advanced Filtering Sliders** — Set interactive sliders to filter by Minimum Score, Min Monthly Yield, Min Market Cap, and a dual-thumb overlapping Price Range selector.
+
+### Deep-Dive Analysis Modal
+Click **Analyze** or **Detail** on any row to open a deep-dive window with:
+- 30-day stock price chart with smooth gradient fill.
+- Trade mechanics explained in plain English.
+- Destructive **Danger Block Explanations** explaining exactly which active kill switch blocked the opportunity.
+- Options data grid and a persistent Star (`☆`/`★`) button to mark favorites.
 
 ---
 
 ## Screenshots
 
-![Dashboard](scripts/shots/02-dashboard-live.png)
-![Top 25 Opportunities](scripts/shots/03-top25.png)
-![Discover](scripts/shots/06-discover.png)
-![Analysis Modal](scripts/shots/05-modal.png)
-![Settings](scripts/shots/05-settings.png)
+![Dashboard](scripts/shots/01-dashboard.png)
+![Top 25 Opportunities](scripts/shots/04-strategy-iv-hv.png)
+![Help Modal](scripts/shots/03-help-modal.png)
 
 ---
 
@@ -83,63 +100,7 @@ npm start
 
 ```bash
 npm run build
-# Output: dist/OptMax Setup 1.0.0.exe
-```
-
----
-
-## How It Works
-
-### Scoring (1–5 dots)
-Every opportunity gets a composite signal score based on:
-- IV Rank ≥ 50 → high historical premium
-- IV/HV ratio ≥ 1.3 → market overpricing volatility
-- Mean reversion signal active → vol spike cooling off
-- Annualized yield ≥ 30%
-- DTE within the 21–45 day sweet spot
-
-### Options Selection
-For each symbol, OptMax:
-1. Fetches the options chain closest to 30 days out
-2. Filters puts that are Out-of-The-Money by at least the configured margin (default 5%)
-3. Selects the highest qualifying strike (maximum premium while staying OTM)
-4. Calculates yield metrics normalized to a 30-day period
-
-### Key Formulas
-```
-Monthly Yield      = (Premium / Strike) × (30 / DTE) × 100
-Annualized Yield   = Monthly Yield × 12
-Monthly Income     = (Premium × 100) × (30 / DTE)
-Break Even         = Strike − Premium
-Margin of Safety   = ((Stock Price − Strike) / Stock Price) × 100
-Historical Vol     = StdDev(daily log returns, 30d) × √252
-IV Rank            = (Current IV − 52w Low IV) / (52w High IV − 52w Low IV) × 100
-```
-
-### Data & Caching
-- Full options scans are cached to disk; subsequent loads are instant
-- Price updates refresh quotes only, skipping the expensive options fetch
-- Discovery cache stores per-symbol results for 3 days to avoid redundant API calls
-
----
-
-## Project Structure
-
-```
-optmax/
-├── main.js          # Electron main process — IPC handlers, data fetching, caching
-├── preload.js       # Context bridge — secure renderer ↔ main API surface
-├── src/
-│   ├── index.html   # App shell and all view markup
-│   ├── app.js       # Renderer — state, rendering, event wiring
-│   └── style.css    # Dark glassmorphism design system
-├── lib/
-│   └── strategies.js # Pure functions: HV, IVR, mean reversion, scoring
-├── assets/
-│   ├── icon.ico     # Windows app icon
-│   └── icon.png     # Source icon (256×256)
-└── test/
-    └── strategies.test.js  # Unit tests for all strategy logic
+# Output: dist/OptMax Setup 1.1.1.exe
 ```
 
 ---
@@ -150,7 +111,7 @@ optmax/
 npm test
 ```
 
-36 unit tests covering HV calculation, IVR, mean reversion signal detection, and composite scoring.
+37 unit and structure validation tests covering HV calculations, IVR calculations, Mean Reversion signals, scoring config defaults, and SEED validation.
 
 ---
 

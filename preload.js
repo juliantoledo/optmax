@@ -7,13 +7,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   fetchHistory:         (symbol)         => ipcRenderer.invoke('fetch-history', symbol),
   getSettings:          ()               => ipcRenderer.invoke('get-settings'),
   saveSettings:         (settings)       => ipcRenderer.invoke('save-settings', settings),
+  resetAllData:         ()               => ipcRenderer.invoke('reset-all-data'),
 
   // Watchlist management
   getWatchlists:        ()               => ipcRenderer.invoke('get-watchlists'),
   addToWatchlist:       (payload)        => ipcRenderer.invoke('add-to-watchlist', payload),
   removeFromWatchlist:  (payload)        => ipcRenderer.invoke('remove-from-watchlist', payload),
 
+  // Starred management
+  getStarred:           ()               => ipcRenderer.invoke('get-starred'),
+  toggleStarred:        (payload)        => ipcRenderer.invoke('toggle-starred', payload),
+
   // Discovery
+  getDiscoveryOpps:       ()        => ipcRenderer.invoke('get-discovery-opps'),
   runDiscovery:           (options) => ipcRenderer.invoke('run-discovery', options),
   onDiscoveryProgress:    (cb) => ipcRenderer.on('discovery-progress', (_e, d) => cb(d)),
   offDiscoveryProgress:   ()   => ipcRenderer.removeAllListeners('discovery-progress'),

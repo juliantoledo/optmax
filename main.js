@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const YahooFinance = require('yahoo-finance2').default;
 const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] });
-const { findClosestDate, computeHV, computeIVR, detectMeanReversion, computeScore } = require('./lib/strategies');
+const { findClosestDate, computeHV, computeIVR, detectMeanReversion } = require('./lib/strategies');
 
 const CACHE_FILE      = path.join(app.getPath('userData'), 'data.json');
 const SETTINGS_FILE   = path.join(app.getPath('userData'), 'settings.json');
@@ -13,21 +13,48 @@ const DISC_CACHE_FILE = path.join(app.getPath('userData'), 'discovery-cache.json
 const SEED_CACHE_FILE = path.join(__dirname, 'lib', 'discovery-seed.json');
 
 const DEFAULT_SETTINGS = {
-  refreshIntervalDays: 14,
+  refreshIntervalDays: 1,
   minMarginPct: 5,
-  priceRefreshHours: 24,
-  watchlists: { ivr: [], iv_hv: [], mean_reversion: [] }
+  priceRefreshHours: 4,
+  watchlist: [],
+  starred: [],
+  gradeA: 51,
+  gradeB: 40,
+  gradeC: 30,
+  gradeD: 20,
+  gradeE: 1,
+  blockEarnings: true,
+  blockBidAsk: true,
+  blockHighIV: true,
+  monthlyYieldTarget: 1.0,
+  deltaMin: 0.25,
+  deltaMax: 0.35,
 };
 
 function loadSettings() {
   try {
     if (fs.existsSync(SETTINGS_FILE)) {
       const saved = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
-      return {
-        ...DEFAULT_SETTINGS,
-        ...saved,
-        watchlists: { ...DEFAULT_SETTINGS.watchlists, ...(saved.watchlists || {}) }
-      };
+      const result = { ...DEFAULT_SETTINGS, ...saved };
+
+      // Migrate old 3-strategy watchlists → unified watchlist
+      if ((!saved.watchlist || saved.watchlist.length === 0) && saved.watchlists) {
+        const w = saved.watchlists;
+        const merged = [...new Set([...(w.ivr || []), ...(w.iv_hv || []), ...(w.mean_reversion || [])])];
+        if (merged.length) result.watchlist = merged;
+      }
+
+      // Auto-reset local grading if they are set to the old defaults or previously migrated 51
+      if ((saved.gradeA === 90 && saved.gradeB === 75 && saved.gradeC === 60) || saved.gradeA === 51) {
+        result.gradeA = DEFAULT_SETTINGS.gradeA;
+        result.gradeB = DEFAULT_SETTINGS.gradeB;
+        result.gradeC = DEFAULT_SETTINGS.gradeC;
+        result.gradeD = DEFAULT_SETTINGS.gradeD;
+        result.gradeE = DEFAULT_SETTINGS.gradeE;
+        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(result), 'utf8');
+      }
+
+      return result;
     }
   } catch {}
   return { ...DEFAULT_SETTINGS };
@@ -53,7 +80,6 @@ function loadCache() {
   return null;
 }
 
-// Full options scan — resets fetchedAt and pricedAt
 function saveCache(data, ivHistory) {
   const settings = loadSettings();
   const now = new Date().toISOString();
@@ -66,7 +92,6 @@ function saveCache(data, ivHistory) {
   fs.writeFileSync(CACHE_FILE, JSON.stringify(payload), 'utf8');
 }
 
-// Price update only — preserves fetchedAt / minMarginPct / ivHistory
 function savePriceUpdate(data) {
   const cache = loadCache() || {};
   const payload = { ...cache, pricedAt: new Date().toISOString(), data };
@@ -83,15 +108,11 @@ function loadDiscoveryCache() {
       raw = JSON.parse(fs.readFileSync(SEED_CACHE_FILE, 'utf8'));
     }
 
-    // Prune entries older than 3 days
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 3);
     const cutoffStr = cutoff.toISOString().split('T')[0];
     const pruned = {};
     for (const [sym, entry] of Object.entries(raw)) {
-      // Seed data might be old, but we want to show it if no fresh cache exists
-      // However, the current logic prunes anything older than 3 days.
-      // Let's allow seed data to persist if it's the only thing we have.
       if (entry.date >= cutoffStr || !fs.existsSync(DISC_CACHE_FILE)) {
         pruned[sym] = entry;
       }
@@ -105,7 +126,7 @@ function saveDiscoveryCache(cache) {
   fs.writeFileSync(DISC_CACHE_FILE, JSON.stringify(cache), 'utf8');
 }
 
-// ── Per-symbol analysis (shared by watchlist scan and discovery) ──────────────
+// ── Per-symbol analysis ───────────────────────────────────────────────────────
 async function analyzeSingleSymbol(symbol, minMarginMultiplier, ivHistory) {
   const target = new Date();
   target.setDate(target.getDate() + 30);
@@ -116,12 +137,19 @@ async function analyzeSingleSymbol(symbol, minMarginMultiplier, ivHistory) {
 
   const histEnd   = new Date();
   const histStart = new Date();
-  histStart.setDate(histStart.getDate() - 35);
-  const history = await yahooFinance.historical(symbol, {
+  histStart.setDate(histStart.getDate() - 60);
+  const chartResult = await yahooFinance.chart(symbol, {
     period1: histStart, period2: histEnd, interval: '1d'
   });
+  const history = chartResult.quotes || [];
   const closes = history.map(h => h.close).filter(c => c > 0);
   const hv = computeHV(closes);
+
+  // Compute MA50
+  const ma50 = closes.length >= 50
+    ? closes.slice(-50).reduce((s, v) => s + v, 0) / 50
+    : null;
+  const aboveMA50 = ma50 !== null ? currentPrice > ma50 : false;
 
   const chain = await yahooFinance.options(symbol);
   if (!chain.expirationDates || chain.expirationDates.length === 0) return null;
@@ -154,6 +182,10 @@ async function analyzeSingleSymbol(symbol, minMarginMultiplier, ivHistory) {
   const best      = puts[0];
   const currentIV = best.impliedVolatility || 0;
 
+  // Extract new fields
+  const bidAskSpread = (best.bid > 0 && best.ask > 0) ? +(best.ask - best.bid).toFixed(2) : null;
+  const delta = best.delta != null ? best.delta : null;
+
   if (!ivHistory[symbol]) ivHistory[symbol] = [];
   const today = new Date().toISOString().split('T')[0];
   if (!ivHistory[symbol].some(h => h.date === today)) {
@@ -164,7 +196,6 @@ async function analyzeSingleSymbol(symbol, minMarginMultiplier, ivHistory) {
   const ivr                 = computeIVR(currentIV, ivHistory[symbol]);
   const ivHvRatio           = hv && hv > 0 ? currentIV / hv : null;
   const meanReversionSignal = detectMeanReversion(currentIV, ivHistory[symbol]);
-  const score               = computeScore(ivr, ivHvRatio, meanReversionSignal);
 
   const premium         = best.lastPrice;
   const strike          = best.strike;
@@ -179,16 +210,22 @@ async function analyzeSingleSymbol(symbol, minMarginMultiplier, ivHistory) {
     symbol,
     companyName: quote.longName || quote.shortName || symbol,
     exchange:    quote.fullExchangeName || quote.exchange || '',
+    marketCap:   quote.marketCap || null,
     currentPrice, strike, dte, premium, capitalRequired,
     monthlyYield, annualizedYield, monthlyIncome,
     marginOfSafety, breakEven,
     impliedVolatility: currentIV,
     hv:               hv || 0,
     ivHvRatio:        ivHvRatio || 0,
-    ivr, meanReversionSignal, score,
+    ivr, meanReversionSignal,
     volume:       best.volume || 0,
     openInterest: best.openInterest || 0,
-    expirationDate: closestDate.toISOString().split('T')[0]
+    expirationDate: closestDate.toISOString().split('T')[0],
+    delta,
+    bidAskSpread,
+    aboveMA50,
+    earningsClear: true,
+    atSupport: false,
   };
 }
 
@@ -197,32 +234,44 @@ async function fetchOptionsData(symbolsOverride = null, onProgress = null) {
   const settings = loadSettings();
   const minMarginMultiplier = 1 - (parseFloat(settings.minMarginPct) / 100);
 
-  const watchlists = settings.watchlists || { ivr: [], iv_hv: [], mean_reversion: [] };
   const isDiscovery = symbolsOverride !== null;
-  const allSymbols = isDiscovery ? symbolsOverride : [...new Set([
-    ...watchlists.ivr,
-    ...watchlists.iv_hv,
-    ...watchlists.mean_reversion
-  ])];
+  const allSymbols = isDiscovery
+    ? symbolsOverride
+    : [...new Set(settings.watchlist || [])];
 
   const cache = loadCache() || {};
   const ivHistory = cache.ivHistory || {};
+  const cachedOpps = cache.data || [];
+  const nowStr = new Date().toISOString();
 
   const opportunities = [];
   let processed = 0;
 
   for (const symbol of allSymbols) {
     try {
-      const opp = await analyzeSingleSymbol(symbol, minMarginMultiplier, ivHistory);
-      if (opp) {
-        opp.strategies = [];
-        if (isDiscovery) {
-          opp.strategies.push('ivr', 'iv_hv', 'mean_reversion');
-        } else {
-          if (watchlists.ivr.includes(symbol))            opp.strategies.push('ivr');
-          if (watchlists.iv_hv.includes(symbol))          opp.strategies.push('iv_hv');
-          if (watchlists.mean_reversion.includes(symbol)) opp.strategies.push('mean_reversion');
+      const existingOpp = cachedOpps.find(o => o.symbol === symbol);
+      
+      const fetchedAtStr = existingOpp ? (existingOpp.fetchedAt || cache.fetchedAt) : null;
+      const isFresh = !isDiscovery && 
+                      existingOpp && 
+                      existingOpp.marketCap !== undefined && 
+                      existingOpp.marketCap !== null && 
+                      fetchedAtStr && 
+                      (Date.now() - new Date(fetchedAtStr).getTime()) < 60 * 60 * 1000;
+
+      let opp = null;
+      if (isFresh) {
+        console.log(`Reusing fresh cached opportunity for ${symbol}`);
+        opp = existingOpp;
+      } else {
+        opp = await analyzeSingleSymbol(symbol, minMarginMultiplier, ivHistory);
+        if (opp) {
+          opp.fetchedAt = nowStr;
         }
+      }
+
+      if (opp) {
+        opp.strategies = isDiscovery ? ['ivr', 'iv_hv', 'mean_reversion'] : [];
         opportunities.push(opp);
       }
     } catch (err) {
@@ -242,19 +291,38 @@ async function fetchCurrentPrices(onProgress = null) {
   if (!cache?.data?.length) return null;
 
   const updatedData = [...cache.data];
+  const now = new Date().toISOString();
+
   for (let i = 0; i < updatedData.length; i++) {
-    if (onProgress) onProgress({ done: i, total: updatedData.length, symbol: updatedData[i].symbol });
+    const item = updatedData[i];
+    if (onProgress) onProgress({ done: i, total: updatedData.length, symbol: item.symbol });
+
+    // Check if price is fresh (less than 1 hour old) and marketCap is not missing
+    const pricedAtStr = item.pricedAt || item.fetchedAt || cache.pricedAt || cache.fetchedAt;
+    const isFresh = pricedAtStr && 
+                    item.marketCap !== undefined && 
+                    item.marketCap !== null && 
+                    (Date.now() - new Date(pricedAtStr).getTime()) < 60 * 60 * 1000;
+
+    if (isFresh) {
+      console.log(`Price update skipped (fresh): ${item.symbol}`);
+      continue;
+    }
+
     try {
-      const quote    = await yahooFinance.quote(updatedData[i].symbol);
+      const quote    = await yahooFinance.quote(item.symbol);
       const newPrice = quote.regularMarketPrice;
       if (!newPrice || newPrice <= 0) continue;
+      
       updatedData[i] = {
-        ...updatedData[i],
+        ...item,
         currentPrice:   newPrice,
-        marginOfSafety: ((newPrice - updatedData[i].strike) / newPrice) * 100
+        marginOfSafety: ((newPrice - item.strike) / newPrice) * 100,
+        marketCap:      quote.marketCap || item.marketCap || null,
+        pricedAt:       now
       };
     } catch (err) {
-      console.warn(`Price update skipped for ${updatedData[i].symbol}:`, err.message);
+      console.warn(`Price update skipped for ${item.symbol}:`, err.message);
     }
   }
   if (onProgress) onProgress({ done: updatedData.length, total: updatedData.length, symbol: '' });
@@ -363,7 +431,7 @@ function initPriceScheduler() {
 // ── Window ────────────────────────────────────────────────────────────────────
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1280, height: 800, minWidth: 960, minHeight: 600,
+    width: 1600, height: 1040, minWidth: 960, minHeight: 600,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
     frame: false,
     backgroundColor: '#070911',
@@ -441,6 +509,11 @@ app.whenReady().then(() => {
   });
   ipcMain.on('window-close', () => BrowserWindow.getFocusedWindow()?.close());
 
+  ipcMain.handle('get-discovery-opps', () => {
+    const cache = loadDiscoveryCache();
+    return Object.values(cache).filter(e => e.opp).map(e => e.opp);
+  });
+
   ipcMain.handle('get-settings', () => loadSettings());
   ipcMain.handle('save-settings', (_event, newSettings) => {
     const merged = { ...loadSettings(), ...newSettings };
@@ -448,22 +521,40 @@ app.whenReady().then(() => {
     return merged;
   });
 
+  ipcMain.handle('reset-all-data', () => {
+    try {
+      saveSettings(DEFAULT_SETTINGS);
+      if (fs.existsSync(CACHE_FILE)) {
+        fs.unlinkSync(CACHE_FILE);
+      }
+      if (fs.existsSync(DISC_CACHE_FILE)) {
+        fs.unlinkSync(DISC_CACHE_FILE);
+      }
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
   ipcMain.handle('fetch-history', async (_event, symbol) => {
     try {
       const end   = new Date();
       const start = new Date();
       start.setDate(start.getDate() - 30);
-      const result = await yahooFinance.historical(symbol, { period1: start, period2: end, interval: '1d' });
-      return result.map(d => ({ date: d.date.toISOString().split('T')[0], close: d.close }));
+      const chartResult = await yahooFinance.chart(symbol, { period1: start, period2: end, interval: '1d' });
+      const result = chartResult.quotes || [];
+      return result
+        .filter(d => d.date && d.close != null)
+        .map(d => ({ date: d.date.toISOString().split('T')[0], close: d.close }));
     } catch { return []; }
   });
 
-  // ── Watchlist management ──────────────────────────────────────────────────
+  // ── Unified watchlist management ──────────────────────────────────────────
   ipcMain.handle('get-watchlists', () => {
-    return loadSettings().watchlists || { ivr: [], iv_hv: [], mean_reversion: [] };
+    return loadSettings().watchlist || [];
   });
 
-  ipcMain.handle('add-to-watchlist', async (_event, { strategy, symbol }) => {
+  ipcMain.handle('add-to-watchlist', async (_event, { symbol }) => {
     const sym = (symbol || '').toUpperCase().trim();
     if (!sym) return { success: false, error: 'Symbol is required' };
     try {
@@ -472,24 +563,35 @@ app.whenReady().then(() => {
     } catch {
       return { success: false, error: 'Could not validate symbol' };
     }
-    const settings   = loadSettings();
-    const watchlists = settings.watchlists || { ivr: [], iv_hv: [], mean_reversion: [] };
-    if (!watchlists[strategy]) watchlists[strategy] = [];
-    if (!watchlists[strategy].includes(sym)) {
-      watchlists[strategy] = [...watchlists[strategy], sym];
-      saveSettings({ ...settings, watchlists });
-    }
-    return { success: true, watchlists };
+    const settings = loadSettings();
+    const watchlist = [...new Set([...(settings.watchlist || []), sym])];
+    saveSettings({ ...settings, watchlist });
+    return { success: true, watchlist };
   });
 
-  ipcMain.handle('remove-from-watchlist', (_event, { strategy, symbol }) => {
-    const settings   = loadSettings();
-    const watchlists = settings.watchlists || { ivr: [], iv_hv: [], mean_reversion: [] };
-    if (watchlists[strategy]) {
-      watchlists[strategy] = watchlists[strategy].filter(s => s !== symbol);
-      saveSettings({ ...settings, watchlists });
+  ipcMain.handle('remove-from-watchlist', (_event, { symbol }) => {
+    const settings = loadSettings();
+    const watchlist = (settings.watchlist || []).filter(s => s !== symbol);
+    saveSettings({ ...settings, watchlist });
+    return { success: true, watchlist };
+  });
+
+  ipcMain.handle('get-starred', () => {
+    return loadSettings().starred || [];
+  });
+
+  ipcMain.handle('toggle-starred', (_event, { symbol }) => {
+    const sym = (symbol || '').toUpperCase().trim();
+    if (!sym) return { success: false, error: 'Symbol is required' };
+    const settings = loadSettings();
+    let starred = settings.starred || [];
+    if (starred.includes(sym)) {
+      starred = starred.filter(s => s !== sym);
+    } else {
+      starred = [...starred, sym];
     }
-    return { success: true, watchlists };
+    saveSettings({ ...settings, starred });
+    return { success: true, starred };
   });
 
   // ── Discovery ────────────────────────────────────────────────────────────────
@@ -498,9 +600,12 @@ app.whenReady().then(() => {
     if (discoveryRunning) return { success: false, error: 'Scan already in progress' };
     discoveryRunning = true;
     try {
-      const screens = ['most_actives', 'day_losers', 'growth_technology_stocks'];
+      const screens = [
+        'most_actives', 'day_gainers', 'day_losers',
+        'growth_technology_stocks', 'undervalued_large_caps', 'aggressive_small_caps',
+      ];
       const batches = await Promise.allSettled(
-        screens.map(scrId => yahooFinance.screener({ scrIds: scrId, count: 100 }))
+        screens.map(scrId => yahooFinance.screener({ scrIds: scrId, count: 150 }))
       );
       const universe = [...new Set(
         batches
@@ -512,29 +617,32 @@ app.whenReady().then(() => {
       if (universe.length === 0)
         return { success: false, error: 'Screener returned no results — try again later' };
 
-      // Split into already-cached (today) vs needs fetching
       const discCache = loadDiscoveryCache();
       const today     = new Date().toISOString().split('T')[0];
-      
+      const oneHourMs = 60 * 60 * 1000;
+
       let cached, toFetch;
       if (options.force) {
-        cached = [];
-        toFetch = universe;
+        // Force: only skip symbols fetched within the last hour
+        cached  = universe.filter(s => {
+          const e = discCache[s];
+          if (!e) return false;
+          const ts = e.fetchedAt ? new Date(e.fetchedAt) : null;
+          return ts && (Date.now() - ts) < oneHourMs;
+        });
+        toFetch = universe.filter(s => !cached.includes(s));
       } else {
         cached    = universe.filter(s => discCache[s]?.date === today);
         toFetch   = universe.filter(s => discCache[s]?.date !== today);
       }
 
-      // Report initial state so UI can show totals immediately
       event.sender.send('discovery-progress', {
         phase: 'scanning', done: cached.length, total: universe.length,
         symbol: '', fromCache: cached.length, toFetch: toFetch.length, fetched: 0,
       });
 
-      // Collect cached opportunities (excluding nulls = didn't pass filters)
       const cachedOpps = cached.map(s => discCache[s].opp).filter(Boolean);
 
-      // Fetch fresh symbols one by one, updating cache after each
       const settings           = loadSettings();
       const minMarginMultiplier = 1 - (parseFloat(settings.minMarginPct) / 100);
       const mainCache          = loadCache() || {};
@@ -553,7 +661,7 @@ app.whenReady().then(() => {
         } catch (err) {
           console.warn(`Discovery skipping ${symbol}:`, err.message);
         }
-        discCache[symbol] = { date: today, opp };
+        discCache[symbol] = { date: today, fetchedAt: new Date().toISOString(), opp };
         fetched++;
         event.sender.send('discovery-progress', {
           phase: 'scanning',
@@ -562,7 +670,6 @@ app.whenReady().then(() => {
         });
       }
 
-      // Persist updated caches
       saveDiscoveryCache(discCache);
       if (Object.keys(ivHistory).length > 0) {
         const mc = loadCache() || {};
@@ -581,26 +688,45 @@ app.whenReady().then(() => {
         mean_reversion: [...opportunities]
           .sort((a, b) => {
             if (b.meanReversionSignal !== a.meanReversionSignal) return b.meanReversionSignal ? 1 : -1;
-            return b.score - a.score;
+            return b.annualizedYield - a.annualizedYield;
           })
           .slice(0, top),
       };
 
-      // Auto-add discovered stocks to watchlists
-      const settings2   = loadSettings();
-      const watchlists2 = { ivr: [], iv_hv: [], mean_reversion: [], ...(settings2.watchlists || {}) };
+      // Auto-add discovered stocks to unified watchlist (use ALL valid opportunities, not just top 25 sliced)
+      const settings2 = loadSettings();
+      const existing = new Set(settings2.watchlist || []);
       let totalAdded = 0;
-      for (const [strategyId, items] of Object.entries(results)) {
-        const existing = new Set(watchlists2[strategyId] || []);
-        for (const opp of items) {
-          if (!existing.has(opp.symbol)) { existing.add(opp.symbol); totalAdded++; }
-        }
-        watchlists2[strategyId] = [...existing];
+      const allOpps = [...new Set(opportunities.map(o => o.symbol))];
+      for (const sym of allOpps) {
+        if (!existing.has(sym)) { existing.add(sym); totalAdded++; }
       }
-      saveSettings({ ...settings2, watchlists: watchlists2 });
+      const watchlist = [...existing];
+      saveSettings({ ...settings2, watchlist });
+
+      // Merge and save these opportunities directly into the main watchlist cache (data.json)
+      const mc = loadCache() || {};
+      const mainOpps = mc.data || [];
+      const mergedOppsMap = new Map();
+      
+      // Load existing cached opportunities
+      for (const o of mainOpps) {
+        mergedOppsMap.set(o.symbol, o);
+      }
+      // Insert / overwrite with newly discovered opportunities
+      const now = new Date().toISOString();
+      for (const o of opportunities) {
+        mergedOppsMap.set(o.symbol, {
+          ...o,
+          fetchedAt: now,
+          pricedAt: now
+        });
+      }
+      
+      saveCache([...mergedOppsMap.values()], { ...(mc.ivHistory || {}), ...ivHistory });
 
       return {
-        success: true, results, watchlists: watchlists2,
+        success: true, results, watchlist,
         scanned: universe.length, found: opportunities.length,
         fromCache: cached.length, fetched: toFetch.length, totalAdded,
       };
