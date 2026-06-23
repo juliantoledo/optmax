@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeFromWatchlist:  (payload)        => ipcRenderer.invoke('remove-from-watchlist', payload),
 
   // Discovery
-  runDiscovery:           ()   => ipcRenderer.invoke('run-discovery'),
+  runDiscovery:           (options) => ipcRenderer.invoke('run-discovery', options),
   onDiscoveryProgress:    (cb) => ipcRenderer.on('discovery-progress', (_e, d) => cb(d)),
   offDiscoveryProgress:   ()   => ipcRenderer.removeAllListeners('discovery-progress'),
 

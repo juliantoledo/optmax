@@ -265,6 +265,32 @@ test('does not exceed 5 for extreme values', () => {
   assert.ok(computeScore(100, 10, true) <= 5);
 });
 
+// ─── Seed Data Validation ────────────────────────────────────────────────────
+section('Seed Data Validation');
+
+test('lib/discovery-seed.json exists and is valid', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const seedPath = path.join(__dirname, '..', 'lib', 'discovery-seed.json');
+  
+  if (!fs.existsSync(seedPath)) {
+    console.warn('    ! Seed file missing, skipping validation');
+    return;
+  }
+  
+  const seed = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+  const symbols = Object.keys(seed);
+  assert.ok(symbols.length > 0, 'Seed file should contain at least one symbol');
+  
+  // Validate a random entry
+  const firstSym = symbols[0];
+  const entry = seed[firstSym];
+  assert.ok(entry.date, 'Entry should have a date');
+  assert.ok(entry.opp, 'Entry should have an opportunity object');
+  assert.strictEqual(entry.opp.symbol, firstSym, 'Symbol mismatch');
+  assert.ok(entry.opp.annualizedYield > 0, 'Should have positive yield');
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log(`\n${'─'.repeat(40)}`);
 if (failed === 0) {

@@ -10,6 +10,7 @@ const { findClosestDate, computeHV, computeIVR, detectMeanReversion, computeScor
 const CACHE_FILE      = path.join(app.getPath('userData'), 'data.json');
 const SETTINGS_FILE   = path.join(app.getPath('userData'), 'settings.json');
 const DISC_CACHE_FILE = path.join(app.getPath('userData'), 'discovery-cache.json');
+const SEED_CACHE_FILE = path.join(__dirname, 'lib', 'discovery-seed.json');
 
 const DEFAULT_SETTINGS = {
   refreshIntervalDays: 14,
@@ -74,19 +75,28 @@ function savePriceUpdate(data) {
 
 // ── Discovery cache ───────────────────────────────────────────────────────────
 function loadDiscoveryCache() {
+  let raw = {};
   try {
     if (fs.existsSync(DISC_CACHE_FILE)) {
-      const raw = JSON.parse(fs.readFileSync(DISC_CACHE_FILE, 'utf8'));
-      // Prune entries older than 3 days
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - 3);
-      const cutoffStr = cutoff.toISOString().split('T')[0];
-      const pruned = {};
-      for (const [sym, entry] of Object.entries(raw)) {
-        if (entry.date >= cutoffStr) pruned[sym] = entry;
-      }
-      return pruned;
+      raw = JSON.parse(fs.readFileSync(DISC_CACHE_FILE, 'utf8'));
+    } else if (fs.existsSync(SEED_CACHE_FILE)) {
+      raw = JSON.parse(fs.readFileSync(SEED_CACHE_FILE, 'utf8'));
     }
+
+    // Prune entries older than 3 days
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 3);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+    const pruned = {};
+    for (const [sym, entry] of Object.entries(raw)) {
+      // Seed data might be old, but we want to show it if no fresh cache exists
+      // However, the current logic prunes anything older than 3 days.
+      // Let's allow seed data to persist if it's the only thing we have.
+      if (entry.date >= cutoffStr || !fs.existsSync(DISC_CACHE_FILE)) {
+        pruned[sym] = entry;
+      }
+    }
+    return pruned;
   } catch {}
   return {};
 }
@@ -133,9 +143,9 @@ async function analyzeSingleSymbol(symbol, minMarginMultiplier, ivHistory) {
   const puts = dated.options[0].puts.filter(p => {
     if (!p.strike || p.strike <= 0 || p.strike > maxAllowedStrike) return false;
     if (!p.lastPrice || p.lastPrice <= 0) return false;
-    if ((p.openInterest || 0) <= 500) return false;
-    if ((p.impliedVolatility || 0) <= 0.15) return false;
-    if (p.bid > 0 && p.ask > 0 && (p.ask - p.bid) > 0.50) return false;
+    if ((p.openInterest || 0) < 5) return false;
+    if ((p.impliedVolatility || 0) <= 0.05) return false;
+    if (p.bid > 0 && p.ask > 0 && (p.ask - p.bid) > 2.00) return false;
     return true;
   });
   if (puts.length === 0) return null;
@@ -484,7 +494,7 @@ app.whenReady().then(() => {
 
   // ── Discovery ────────────────────────────────────────────────────────────────
   let discoveryRunning = false;
-  ipcMain.handle('run-discovery', async (event) => {
+  ipcMain.handle('run-discovery', async (event, options = {}) => {
     if (discoveryRunning) return { success: false, error: 'Scan already in progress' };
     discoveryRunning = true;
     try {
@@ -505,8 +515,15 @@ app.whenReady().then(() => {
       // Split into already-cached (today) vs needs fetching
       const discCache = loadDiscoveryCache();
       const today     = new Date().toISOString().split('T')[0];
-      const cached    = universe.filter(s => discCache[s]?.date === today);
-      const toFetch   = universe.filter(s => discCache[s]?.date !== today);
+      
+      let cached, toFetch;
+      if (options.force) {
+        cached = [];
+        toFetch = universe;
+      } else {
+        cached    = universe.filter(s => discCache[s]?.date === today);
+        toFetch   = universe.filter(s => discCache[s]?.date !== today);
+      }
 
       // Report initial state so UI can show totals immediately
       event.sender.send('discovery-progress', {

@@ -1341,6 +1341,11 @@ html, body {
   color: var(--text-muted);
   background: var(--bg-surface);
 }
+.discover-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
 .discover-run-btn {
   display: inline-flex;
   align-items: center;
@@ -1359,6 +1364,15 @@ html, body {
 .discover-run-btn:hover {
   background: rgba(99, 102, 241, 0.28);
   border-color: rgba(99, 102, 241, 0.55);
+}
+.discover-force-btn {
+  background: rgba(168, 85, 247, 0.12);
+  color: #a855f7;
+  border-color: rgba(168, 85, 247, 0.35);
+}
+.discover-force-btn:hover {
+  background: rgba(168, 85, 247, 0.22);
+  border-color: rgba(168, 85, 247, 0.55);
 }
 .discover-run-btn:disabled {
   opacity: 0.55;

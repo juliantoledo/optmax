@@ -781,16 +781,17 @@ function setDiscoverProgress({ phase, done, total, symbol, fromCache, toFetch, f
 }
 
 function initDiscoverView() {
-  async function runScan() {
+  async function runScan(options = {}) {
     const runBtn      = el('discover-run-btn');
+    const forceBtn    = el('discover-force-btn');
     const runAgainBtn = el('discover-run-again-btn');
-    [runBtn, runAgainBtn].forEach(b => { if (b) { b.disabled = true; b.classList.add('spinning'); } });
+    [runBtn, forceBtn, runAgainBtn].forEach(b => { if (b) { b.disabled = true; b.classList.add('spinning'); } });
     el('discover-results').classList.add('hidden');
     el('discover-progress').classList.remove('hidden');
     setDiscoverProgress({ phase: 'fetching', done: 0, total: 0, symbol: '' });
 
     try {
-      const result = await window.electronAPI.runDiscovery();
+      const result = await window.electronAPI.runDiscovery(options);
       el('discover-progress').classList.add('hidden');
       if (result.success) {
         Object.keys(DISCOVER_TBODIES).forEach(sid => renderDiscoverTable(sid, result.results[sid]));
@@ -821,15 +822,18 @@ function initDiscoverView() {
       el('discover-progress').classList.remove('hidden');
     } finally {
       const runBtn      = el('discover-run-btn');
+      const forceBtn    = el('discover-force-btn');
       const runAgainBtn = el('discover-run-again-btn');
-      [runBtn, runAgainBtn].forEach(b => { if (b) { b.disabled = false; b.classList.remove('spinning'); } });
+      [runBtn, forceBtn, runAgainBtn].forEach(b => { if (b) { b.disabled = false; b.classList.remove('spinning'); } });
     }
   }
 
   const runBtn = el('discover-run-btn');
+  const forceBtn = el('discover-force-btn');
   const runAgainBtn = el('discover-run-again-btn');
-  if (runBtn) runBtn.addEventListener('click', runScan);
-  if (runAgainBtn) runAgainBtn.addEventListener('click', runScan);
+  if (runBtn) runBtn.addEventListener('click', () => runScan());
+  if (forceBtn) forceBtn.addEventListener('click', () => runScan({ force: true }));
+  if (runAgainBtn) runAgainBtn.addEventListener('click', () => runScan());
 
   window.electronAPI.onDiscoveryProgress(setDiscoverProgress);
 }
