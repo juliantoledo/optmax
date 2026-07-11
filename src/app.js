@@ -145,7 +145,7 @@ function renderDashboardStarred() {
     return;
   }
 
-  container.innerHTML = starredOpps.slice(0, 5).map((d, i) => `
+  container.innerHTML = starredOpps.slice(0, 10).map((d, i) => `
     <div class="preview-item" data-idx="${allData.indexOf(d)}">
       <div class="preview-item-left" style="align-items: flex-start;">
         <span class="preview-rank" style="color: #fbbf24; font-size: 13px; width: 16px; margin-top: 4px;">★</span>
