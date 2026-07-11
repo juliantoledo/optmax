@@ -1,6 +1,6 @@
 {
   "name": "optmax",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Cash-Secured Puts Tracker",
   "main": "main.js",
   "scripts": {
