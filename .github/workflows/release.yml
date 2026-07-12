@@ -31,7 +31,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-latest, windows-latest, ubuntu-latest]
 
     permissions:
       contents: write
@@ -60,5 +60,6 @@ jobs:
           find dist -maxdepth 1 -type f \( \
             -name "*.exe" -o -name "*.exe.blockmap" -o \
             -name "*.dmg" -o -name "*.dmg.blockmap" -o \
+            -name "*.AppImage" -o \
             -name "latest*.yml" \
           \) -print0 | xargs -0 gh release upload ${{ github.ref_name }} --clobber
